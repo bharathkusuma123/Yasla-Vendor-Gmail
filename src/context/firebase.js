@@ -1,17 +1,23 @@
-// Import the functions you need from the SDKs you need
+// firebase.js
 import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeAuth, getReactNativePersistence, GoogleAuthProvider } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAkbnWd27YN-A8txV7uh1zGDnTh-SWFMhI",
-  authDomain: "yasla-vendor.firebaseapp.com",
-  projectId: "yasla-vendor",
-  storageBucket: "yasla-vendor.firebasestorage.app",
-  messagingSenderId: "234036834182",
-  appId: "1:234036834182:web:229773b8d0cfd119384607"
+  apiKey: "AIzaSyC45EdSQmu4TqacZT3fhaxjOL2WxcOz9m8",
+  authDomain: "yasla-vendor-f5eb0.firebaseapp.com",
+  projectId: "yasla-vendor-f5eb0",
+  storageBucket: "yasla-vendor-f5eb0.firebasestorage.app",
+  messagingSenderId: "796283920864",
+  appId: "1:796283920864:web:ed465b7cccc988cdeecb85"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize Auth with AsyncStorage persistence
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+
+export const googleProvider = new GoogleAuthProvider();
