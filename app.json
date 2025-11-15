@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "yasla-vendor",
+    "slug": "yasla-vendor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yasla.yaslavendor",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "We need camera access so you can take photos for your listings.",
+        "NSPhotoLibraryUsageDescription": "We need photo library access so you can upload images from your device.",
+        "NSLocationWhenInUseUsageDescription": "yasla-vendor needs access to your location to provide accurate services based on your position.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "yasla-vendor may need location access even in background for certain features."
+      }
+    },
+    "android": {
+      "versionCode": 7,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.yasla.vendor"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ba151c94-d79f-467f-b8d5-a88a67caf60d"
+      }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
+  }
+}
