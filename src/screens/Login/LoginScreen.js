@@ -32,12 +32,13 @@ const VendorLoginScreen = ({ navigation }) => {
 
   const { login } = useContext(AuthContext);
 
-  // Google Auth Request
+  // Google Auth Request with CORRECT redirectUri
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId: '796283920864-ugon3v43r514s98aab1cf91qt4vhtb0c.apps.googleusercontent.com',
     iosClientId: '796283920864-sf0429dvc8iatc63s064oras73i094q0.apps.googleusercontent.com', 
     androidClientId: '796283920864-33pkk167okl48q3skqgrlh3v75m6484n.apps.googleusercontent.com',
     scopes: ['openid', 'profile', 'email'],
+    redirectUri: 'https://auth.expo.io/@iiiqbets/yasla-vendor', // YOUR EXACT REDIRECT URI
   });
 
   // Handle Google Login Response
@@ -50,12 +51,11 @@ const VendorLoginScreen = ({ navigation }) => {
       setGoogleLoading(false);
       console.log('Google auth error:', response.error);
       
-      // More specific error messages
       let errorMessage = 'An error occurred during Google login';
       if (response.error === 'access_denied') {
-        errorMessage = 'Google login was cancelled. Please make sure the app is published in Google Cloud Console.';
+        errorMessage = 'Google login was cancelled.';
       } else if (response.error === 'invalid_request') {
-        errorMessage = 'Configuration error. Please contact administrator.';
+        errorMessage = 'Please make sure the redirect URI is configured in Google Cloud Console.';
       }
       
       Alert.alert('Google Login Failed', errorMessage);
@@ -126,7 +126,6 @@ const VendorLoginScreen = ({ navigation }) => {
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { 
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
         },
       });
 
@@ -196,8 +195,7 @@ const VendorLoginScreen = ({ navigation }) => {
     setGoogleLoading(true);
     try {
       console.log('Starting Google login...');
-      const result = await promptAsync();
-      console.log('Prompt result:', result);
+      await promptAsync();
     } catch (error) {
       console.error('Google prompt error:', error);
       setGoogleLoading(false);
@@ -329,104 +327,3 @@ const VendorLoginScreen = ({ navigation }) => {
 };
 
 export default VendorLoginScreen;
-
-
-// import React from "react";
-// import {
-//   View,
-//   Text,
-//   TouchableOpacity,
-//   Alert,
-//   StyleSheet
-// } from "react-native";
-
-// import * as Google from "expo-auth-session";
-// import * as WebBrowser from "expo-web-browser";
-
-// WebBrowser.maybeCompleteAuthSession();
-
-// const WEB_CLIENT_ID =
-//   "796283920864-ugon3v43r514s98aab1cf91qt4vhtb0c.apps.googleusercontent.com";
-
-// export default function VendorLoginScreen() {
-  
-//   const handleGoogleLogin = async () => {
-//     try {
-//       // REQUIRED for Expo Go testing
-//       const redirectUri = Google.makeRedirectUri({
-//         useProxy: true,
-//       });
-
-//       const authUrl =
-//         "https://accounts.google.com/o/oauth2/v2/auth?" +
-//         `response_type=token&` +
-//         `client_id=${WEB_CLIENT_ID}&` +
-//         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-//         `scope=openid%20profile%20email`;
-
-//       const result = await Google.startAsync({ authUrl });
-//       console.log("GOOGLE RESULT:", result);
-
-//       if (result.type === "success") {
-//         const accessToken = result.params.access_token;
-
-//         // Fetch Google user profile
-//         const userInfoResponse = await fetch(
-//           "https://www.googleapis.com/oauth2/v2/userinfo",
-//           {
-//             headers: { Authorization: `Bearer ${accessToken}` },
-//           }
-//         );
-
-//         const user = await userInfoResponse.json();
-//         console.log("GOOGLE USER:", user);
-
-//         Alert.alert("Success", `Logged in as ${user.email}`);
-//       } else {
-//         Alert.alert("Cancelled", "Google login cancelled");
-//       }
-//     } catch (error) {
-//       console.log("GOOGLE ERROR:", error);
-//       Alert.alert("Error", "Google login failed");
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Vendor Login</Text>
-
-//       {/* Google Login Button */}
-//       <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
-//         <Text style={styles.googleText}>Login with Google</Text>
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
-
-// // ---------- STYLES ----------
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     padding: 20,
-//   },
-//   title: {
-//     fontSize: 28,
-//     marginBottom: 40,
-//     fontWeight: "bold",
-//   },
-//   googleButton: {
-//     backgroundColor: "#fff",
-//     borderWidth: 1,
-//     borderColor: "#ddd",
-//     paddingVertical: 12,
-//     paddingHorizontal: 20,
-//     borderRadius: 8,
-//     elevation: 3,
-//   },
-//   googleText: {
-//     fontSize: 18,
-//     color: "#000",
-//   },
-// });

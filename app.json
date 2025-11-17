@@ -4,7 +4,7 @@
     "slug": "yasla-vendor",
     "owner": "iiiqbets",
     "version": "1.0.0",
-    "scheme": "com.your.app",
+    "scheme": "yaslavendor",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
