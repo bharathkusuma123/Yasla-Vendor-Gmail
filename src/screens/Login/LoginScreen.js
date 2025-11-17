@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,73 +12,93 @@ import {
   Keyboard,
   Platform,
   Image,
-} from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
-import { AuthContext } from '../../context/AuthContext';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import styles from './LoginStyles';
+} from "react-native";
 
-// Required for Expo
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+
+import axios from "axios";
+import { AuthContext } from "../../context/AuthContext";
+
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { auth } from "../../context/firebase";
+import styles from "./LoginStyles";
+
 WebBrowser.maybeCompleteAuthSession();
 
 const VendorLoginScreen = ({ navigation }) => {
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const { login } = useContext(AuthContext);
 
-  // Google Auth Request with CORRECT redirectUri
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: '796283920864-ugon3v43r514s98aab1cf91qt4vhtb0c.apps.googleusercontent.com',
-    iosClientId: '796283920864-sf0429dvc8iatc63s064oras73i094q0.apps.googleusercontent.com', 
-    androidClientId: '796283920864-33pkk167okl48q3skqgrlh3v75m6484n.apps.googleusercontent.com',
-    scopes: ['openid', 'profile', 'email'],
-    redirectUri: 'https://auth.expo.io/@iiiqbets/yasla-vendor', // YOUR EXACT REDIRECT URI
+  // GOOGLE LOGIN
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId:
+      "115986608005-jap9gjhku1vsan9q2n8mtj780eg9n9q3.apps.googleusercontent.com",
   });
 
-  // Handle Google Login Response
-  React.useEffect(() => {
-    console.log('Google Response:', response);
-    
-    if (response?.type === 'success') {
-      handleGoogleSignIn(response.authentication.accessToken);
-    } else if (response?.type === 'error') {
-      setGoogleLoading(false);
-      console.log('Google auth error:', response.error);
-      
-      let errorMessage = 'An error occurred during Google login';
-      if (response.error === 'access_denied') {
-        errorMessage = 'Google login was cancelled.';
-      } else if (response.error === 'invalid_request') {
-        errorMessage = 'Please make sure the redirect URI is configured in Google Cloud Console.';
+  // HANDLE GOOGLE SIGN-IN
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+
+      if (!id_token) {
+        Alert.alert("Google Login Failed", "No ID token received");
+        return;
       }
-      
-      Alert.alert('Google Login Failed', errorMessage);
+
+      const credential = GoogleAuthProvider.credential(id_token);
+
+      signInWithCredential(auth, credential)
+        .then((userCredential) => {
+          const user = userCredential.user;
+
+          const formattedUser = {
+            email: user.email,
+            full_name: user.displayName,
+            phone: user.phoneNumber,
+            status: "active",
+            user_id: user.uid,
+            user_role: "vendor",
+            salon: null,
+          };
+
+          login(formattedUser);
+          navigation.replace("VendorTabs");
+        })
+        .catch((error) => {
+          console.error("Google Login Error:", error);
+          Alert.alert("Google Login Failed", error.message);
+        });
     }
   }, [response]);
 
+  // NORMAL LOGIN
   const handleLogin = async () => {
     if (!phone || !password) {
-      Alert.alert('Error', 'Please enter both phone number and password');
+      Alert.alert("Error", "Please enter phone & password");
       return;
     }
 
     setIsLoading(true);
+
     try {
-      const loginResponse = await axios.post(`https://yaslaservice.com:81/user_login`, {
-        phone,
-        password,
-      });
+      const loginResponse = await axios.post(
+        `https://yaslaservice.com:81/user_login`,
+        { phone, password }
+      );
 
       const userData = loginResponse.data?.data;
-      if (!userData) throw new Error('User data not found in response');
+      if (!userData) throw new Error("User data not found");
 
-      const usersResponse = await axios.get(`https://yaslaservice.com:81/users`);
+      const usersResponse = await axios.get(
+        `https://yaslaservice.com:81/users`
+      );
+
       const allUsers = usersResponse.data?.data || [];
 
       const matchedUser = allUsers.find(
@@ -98,136 +118,40 @@ const VendorLoginScreen = ({ navigation }) => {
       await login(formattedUser);
 
       const role = formattedUser.user_role?.toLowerCase();
-      let targetRoute = 'VendorTabs';
-      if (role === 'sub admin') targetRoute = 'SubAdminTabs';
-      else if (role === 'receptionist') targetRoute = 'ReceptionistTabs';
-      else if (role === 'stylist') targetRoute = 'StylistTabs';
+      let targetRoute = "VendorTabs";
+
+      if (role === "sub admin") targetRoute = "SubAdminTabs";
+      else if (role === "receptionist") targetRoute = "ReceptionistTabs";
+      else if (role === "stylist") targetRoute = "StylistTabs";
 
       navigation.replace(targetRoute);
-
     } catch (error) {
-      console.error('Login error:', error.response?.data || error.message);
       Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || error.message || 'Invalid phone number or password'
+        "Login Failed",
+        error.response?.data?.message || error.message
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async (accessToken) => {
-    try {
-      setGoogleLoading(true);
-      
-      console.log('Google access token received');
-      
-      // Get user info from Google API
-      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { 
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!userInfoResponse.ok) {
-        throw new Error(`Google API error: ${userInfoResponse.status}`);
-      }
-
-      const userInfo = await userInfoResponse.json();
-      const userEmail = userInfo.email;
-
-      if (!userEmail) {
-        throw new Error('No email found from Google account');
-      }
-
-      console.log('Google login successful for:', userEmail);
-
-      // Fetch users from backend and match email
-      const usersResponse = await axios.get(`https://yaslaservice.com:81/users`);
-      const allUsers = usersResponse.data?.data || [];
-
-      const matchedUser = allUsers.find(user => 
-        user.email.toLowerCase() === userEmail.toLowerCase()
-      );
-
-      if (!matchedUser) {
-        throw new Error('No account found with this Google email. Please contact administrator.');
-      }
-
-      if (matchedUser.status !== 'Active') {
-        throw new Error('Your account is not active. Please contact administrator.');
-      }
-
-      const formattedUser = {
-        email: matchedUser.email,
-        full_name: matchedUser.full_name || userInfo.name,
-        phone: matchedUser.phone,
-        status: matchedUser.status,
-        user_id: matchedUser.id,
-        user_role: matchedUser.user_role,
-        salon: matchedUser.salon,
-        profile_image: matchedUser.profile_image,
-      };
-
-      await login(formattedUser);
-
-      const role = formattedUser.user_role?.toLowerCase();
-      let targetRoute = 'VendorTabs';
-      if (role === 'sub admin') targetRoute = 'SubAdminTabs';
-      else if (role === 'receptionist') targetRoute = 'ReceptionistTabs';
-      else if (role === 'stylist') targetRoute = 'StylistTabs';
-
-      Alert.alert('Success', `Welcome ${formattedUser.full_name}!`);
-      navigation.replace(targetRoute);
-
-    } catch (error) {
-      console.error('Google login error:', error);
-      Alert.alert(
-        'Google Login Failed',
-        error.message || 'Failed to login with Google. Please try again.'
-      );
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      console.log('Starting Google login...');
-      await promptAsync();
-    } catch (error) {
-      console.error('Google prompt error:', error);
-      setGoogleLoading(false);
-      Alert.alert('Error', 'Failed to start Google login. Please try again.');
-    }
-  };
-
-  const handleForgotPassword = () => {
-    navigation.push('ForgotPassword');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.container}>
-            {/* Logo */}
             <Image
-              source={require('../../Logos/Outsidelogo.jpg')}
+              source={require("../../Logos/Outsidelogo.jpg")}
               style={styles.logo}
               resizeMode="contain"
             />
 
             <Text style={styles.title}>Vendor Login</Text>
 
-            {/* Phone Input */}
+            {/* PHONE */}
             <Text style={styles.label}>Phone Number</Text>
             <TextInput
               style={styles.input}
@@ -236,11 +160,10 @@ const VendorLoginScreen = ({ navigation }) => {
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              autoCapitalize="none"
               maxLength={10}
             />
 
-            {/* Password Input */}
+            {/* PASSWORD */}
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
@@ -256,27 +179,18 @@ const VendorLoginScreen = ({ navigation }) => {
                 onPress={() => setShowPassword(!showPassword)}
               >
                 <MaterialCommunityIcons
-                  name={showPassword ? 'eye-off' : 'eye'}
+                  name={showPassword ? "eye-off" : "eye"}
                   size={24}
                   color="#777"
                 />
               </TouchableOpacity>
             </View>
 
-            {/* Forgot Password */}
-            <TouchableOpacity
-              style={styles.forgotPasswordLink}
-              onPress={handleForgotPassword}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            {/* Login Button */}
+            {/* LOGIN BUTTON */}
             <TouchableOpacity
               style={[styles.button, isLoading && styles.disabledButton]}
               onPress={handleLogin}
               disabled={isLoading}
-              activeOpacity={0.8}
             >
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
@@ -285,37 +199,33 @@ const VendorLoginScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
-            {/* OR Divider */}
+            {/* OR */}
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google Login */}
+            {/* GOOGLE SIGN-IN BUTTON */}
             <TouchableOpacity
-              style={[styles.googleButton, googleLoading && styles.disabledButton]}
-              onPress={handleGoogleLogin}
-              disabled={googleLoading || !request}
-              activeOpacity={0.8}
+              style={styles.googleButton}
+              onPress={() => promptAsync()}
             >
-              {googleLoading ? (
-                <ActivityIndicator color="#666" />
-              ) : (
-                <>
-                  <Image
-                    source={require('../../Logos/Googleicon.jpeg')}
-                    style={styles.googleIcon}
-                  />
-                  <Text style={styles.googleText}>Login with Google</Text>
-                </>
-              )}
+              <Image
+                source={{
+                  uri: "https://upload.wikimedia.org/wikipedia/commons/4/4a/Google_2015_logo.svg",
+                }}
+                style={{ width: 20, height: 20, marginRight: 10 }}
+              />
+              <Text style={styles.googleButtonText}>
+                Continue with Google
+              </Text>
             </TouchableOpacity>
 
-            {/* Signup Link */}
+            {/* SIGNUP */}
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.push('Signup')}>
+              <TouchableOpacity onPress={() => navigation.push("Signup")}>
                 <Text style={styles.signupLink}>Sign up</Text>
               </TouchableOpacity>
             </View>
